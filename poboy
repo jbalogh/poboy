@@ -123,9 +123,7 @@ def main():
     arg('-f', '--find', action='store_true',
         help="Just show the strings that need to be moved")
     arg('-n', '--dry_run', action='store_true',
-        help="Don't write to any files")
-    arg('-u', '--unique', action='store_true',
-        help="Only show the strings that aren't in the existing .po file")
+        help="Don't edit any files; useful for seeing what will be added")
 
     args = parser.parse_args()
 
@@ -135,8 +133,6 @@ def main():
 
     if args.find:
         show(find_strings())
-    elif args.unique:
-        show(unique(args.pofile))
     elif args.add:
         add_strings(args.pofile, args.dry_run)
     else:
