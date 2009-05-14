@@ -17,9 +17,18 @@ import sys
 import argparse
 from path import path
 
-# Won't match anything fancier than ___('foo', 'bar').
-STUPID_TRANS_RE = r"""___\(['"](.*)['"], ['"](.*)['"]\)"""
-trans_re = re.compile(STUPID_TRANS_RE)
+# This is stupid and only uses single quotes because of a bug in python
+# regexen.  You can't do [^\1] and have it reference a group, it looks
+# for things that don't match the character '1'.  F that.
+TRANS_RE = r"""___\(  # Start of a gettext call
+              ' # Opening msgid quote mark
+              (?P<msgid>[^']+)  # msgid: everything up to the closing quote
+              ',\s* # Closing msgid quote
+              ' # Opening msgstr quote mark
+              (?P<msgstr>[^']+) # msgstr
+              '\)   # Closing msgstr quote and gettext call
+              """
+trans_re = re.compile(TRANS_RE, re.VERBOSE)
 
 msgid_re = re.compile('^msgid "([^"]+)"')
 
@@ -53,8 +62,9 @@ def find_strings():
         for index, line in enumerate(open(f)):
             match = trans_re.search(line)
             if match:
-                msgid, msgstr = match.groups()
-                found[msgid] = Trans(msgid, msgstr, f, index)
+                groups = match.groupdict()
+                msgid = groups['msgid']
+                found[msgid] = Trans(msgid, groups['msgstr'], f, index)
     return found
 
 
