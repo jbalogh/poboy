@@ -1,0 +1,147 @@
+#!/usr/bin/env python
+"""
+Finds all the gettext calls that have an inline fallback and moves the fallback
+into the messages.po file.  Thus, you can use ___('msgid', 'msgstr') when you're
+writing new code and use this script to clean up afterwards.
+
+Doesn't edit any code files; instead, prints out a unified diff that you can
+check for correctness and send to patch.  I didn't want to deal with rewriting
+files safely.
+"""
+
+import difflib
+import itertools
+import re
+import sys
+
+import argparse
+from path import path
+
+# Won't match anything fancier than ___('foo', 'bar').
+STUPID_TRANS_RE = r"""___\(['"](.*)['"], ['"](.*)['"]\)"""
+trans_re = re.compile(STUPID_TRANS_RE)
+
+msgid_re = re.compile('^msgid "([^"]+)"')
+
+FILE_PATTERNS = ['*.php', '*.thtml']
+
+PO_FORMAT = """\
+#: %s:%s
+msgid "%s"
+msgstr "%s"
+"""
+
+
+class Trans(object):
+
+    def __init__(self, msgid, msgstr, filename, lineno):
+        self.msgid = msgid
+        self.msgstr = msgstr
+        self.filename = filename
+        self.lineno = lineno
+
+    def __repr__(self):
+        return PO_FORMAT % (self.filename, self.lineno,
+                            self.msgid, self.msgstr)
+
+
+def find_strings():
+    """Find all the gettext strings that have an inline replacement."""
+    p = path('.')
+    found = {}
+    for f in itertools.chain(*map(p.walkfiles, FILE_PATTERNS)):
+        for index, line in enumerate(open(f)):
+            match = trans_re.search(line)
+            if match:
+                msgid, msgstr = match.groups()
+                found[msgid] = Trans(msgid, msgstr, f, index)
+    return found
+
+
+def find_existing(pofile):
+    """Figure out all the existing msgids."""
+    ids = set()
+    for line in open(pofile):
+        match = msgid_re.search(line)
+        if match:
+            ids.add(match.groups()[0])
+    return ids
+
+
+def unique(pofile):
+    """Remove any Trans strings that are already in messages.po."""
+    trans = find_strings()
+    existing = find_existing(pofile)
+    
+    for msgid in trans.keys():
+        if msgid in existing:
+            del trans[msgid]
+    return trans
+
+
+def sort(trans):
+    return sorted(trans.values(), key=lambda x: (x.filename, x.lineno))
+
+
+def add_strings(pofile, dry_run=False):
+    """Append the replacement strings to messages.po."""
+    trans = unique(pofile)
+    outfile = sys.stdout if dry_run else open(pofile, 'a')
+
+    for t in sort(trans):
+        outfile.write('\n' + str(t))
+
+    return trans
+
+
+def replace(trans_dict):
+    """Print out a diff that removes all the replacement strings."""
+    groups = itertools.groupby(trans_dict.values(), key=lambda x: x.filename)
+    for filename, trans in groups:
+        orig = open(filename).readlines()
+        new = list(orig)
+        for t in trans:
+            line = orig[t.lineno]
+            repl = trans_re.sub(lambda m: "___('%s')" % m.groups()[0], line)
+            new[t.lineno] = repl
+        diff = difflib.unified_diff(orig, new, filename, 'b/' + filename)
+        print ''.join(diff)
+
+
+def update(pofile, dry_run=False):
+    """Add the replacement strings and print a diff to remove them."""
+    trans = add_strings(pofile, dry_run)
+    replace(trans)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    arg = parser.add_argument
+    arg('pofile', help="Path to the existing .po file")
+    arg('-a', '--add', action='store_true',
+        help="Only add to the .po file; don't do any clean up")
+    arg('-f', '--find', action='store_true',
+        help="Just show the strings that need to be moved")
+    arg('-n', '--dry_run', action='store_true',
+        help="Don't write to any files")
+    arg('-u', '--unique', action='store_true',
+        help="Only show the strings that aren't in the existing .po file")
+
+    args = parser.parse_args()
+
+    def show(trans):
+        for t in sort(trans):
+            print t
+
+    if args.find:
+        show(find_strings())
+    elif args.unique:
+        show(unique(args.pofile))
+    elif args.add:
+        add_strings(args.pofile, args.dry_run)
+    else:
+        update(args.pofile, args.dry_run)
+
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,7 @@
+Finds all the gettext calls that have an inline fallback and moves the fallback
+into the messages.po file.  Thus, you can use ___('msgid', 'msgstr') when you're
+writing new code and use this script to clean up afterwards.
+
+Doesn't edit any code files; instead, prints out a unified diff that you can
+check for correctness and send to patch.  I didn't want to deal with rewriting
+files safely.
