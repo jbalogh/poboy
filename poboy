@@ -106,7 +106,7 @@ def add_strings(pofile, dry_run=False):
 
 def replace(trans_dict):
     """Print out a diff that removes all the replacement strings."""
-    groups = itertools.groupby(trans_dict.values(), key=lambda x: x.filename)
+    groups = itertools.groupby(sort(trans_dict), key=lambda x: x.filename)
     for filename, trans in groups:
         orig = open(filename).readlines()
         new = list(orig)
