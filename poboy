@@ -86,7 +86,7 @@ def sort(trans):
 def add_strings(pofile, dry_run=False):
     """Append the replacement strings to messages.po."""
     trans = unique(pofile)
-    outfile = sys.stdout if dry_run else open(pofile, 'a')
+    outfile = dry_run and sys.stdout or open(pofile, 'a')
 
     for t in sort(trans):
         outfile.write('\n' + str(t))
