@@ -1,0 +1,7 @@
+1. Get the source distribution.
+2. cd /path/to/poboy
+3. python setup.py install
+
+You'll need to use sudo for #3 unless you put your python packages somewhere
+else (certainly a good idea!), in which case you probably didn't bother reading
+install instructions.
