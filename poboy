@@ -17,18 +17,16 @@ import sys
 import argparse
 from path import path
 
-# This is stupid and only uses single quotes because of a bug in python
-# regexen.  You can't do [^\1] and have it reference a group, it looks
-# for things that don't match the character '1'.  F that.
-TRANS_RE = r"""___\(  # Start of a gettext call
-              ' # Opening msgid quote mark
-              (?P<msgid>[^']+)  # msgid: everything up to the closing quote
-              ',\s* # Closing msgid quote
-              ' # Opening msgstr quote mark
-              (?P<msgstr>[^']+) # msgstr
-              '\)   # Closing msgstr quote and gettext call
-              """
-trans_re = re.compile(TRANS_RE, re.VERBOSE)
+# This is stupid and verbose because of a bug in python regexen.  You can't do
+# [^\1] and have it reference a group, it looks for things that don't match the
+# character '1'.  F that.
+def named_string(name):
+    """Match a quoted string (single or double) and save it as `name`."""
+    quoted = lambda q: '%s[^%s]+%s' % (q, q, q)
+    return '(?P<%s>%s|%s)' % (name, quoted("'"), quoted('"'))
+
+TRANS_RE = r'___\(%s,\s*%s\)' % (named_string('msgid'), named_string('msgstr'))
+trans_re = re.compile(TRANS_RE)
 
 msgid_re = re.compile('^msgid "([^"]+)"')
 
@@ -63,8 +61,10 @@ def find_strings():
             match = trans_re.search(line)
             if match:
                 groups = match.groupdict()
-                msgid = groups['msgid']
-                found[msgid] = Trans(msgid, groups['msgstr'], f, index)
+                # Drop the quotation marks.
+                msgid = groups['msgid'][1:-1]
+                msgstr = groups['msgstr'][1:-1]
+                found[msgid] = Trans(msgid, msgstr, f, index)
     return found
 
 
