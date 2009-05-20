@@ -112,7 +112,7 @@ def replace(trans_dict):
         new = list(orig)
         for t in trans:
             line = orig[t.lineno]
-            repl = trans_re.sub(lambda m: "___('%s')" % m.groups()[0], line)
+            repl = trans_re.sub(lambda m: "___(%s)" % m.groups()[0], line)
             new[t.lineno] = repl
         diff = difflib.unified_diff(orig, new, filename, 'b/' + filename)
         print ''.join(diff)
