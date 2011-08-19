@@ -25,3 +25,6 @@ Show the strings that will be added and the cleanup patch:
 And the fun one, add the strings to messages.po and generate a cleanup patch:
 
     poboy locale/en_US/LC_MESSAGES/messages.po > poboy.patch
+
+
+Testing the service hook
